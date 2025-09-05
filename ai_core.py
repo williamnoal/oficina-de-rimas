@@ -11,5 +11,5 @@ def configure_ai():
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
         return model
     except (KeyError, FileNotFoundError):
-        st.error("Chave da API não encontrada. Verifique o arquivo secrets.toml.")
+        st.error("Chave da API do Google AI não encontrada. Verifique o arquivo secrets.toml.")
         return None

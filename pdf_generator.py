@@ -1,22 +1,28 @@
-# Arquivo: pdf_generator.py (VERSÃO FINAL - Com Decoração de PDF via IA)
+# Arquivo: pdf_generator.py (VERSÃO FINAL - Correção do Erro AttributeError)
 
 from fpdf import FPDF
 from datetime import datetime
 import json
-import random
+import io
 from ai_core import configure_ai
+from icon_library import ICONS
+from math import cos as _cos, sin as _sin # Importa funções matemáticas
+
+# A lista de ícones que disponibilizamos para a IA escolher
+AVAILABLE_ICONS = list(ICONS.keys())
 
 def generate_pdf_style(theme, poem_text):
-    """Gera um estilo de design para o PDF, incluindo um estilo de borda."""
+    """Gera um estilo de design para o PDF, incluindo um ícone temático."""
     model = configure_ai()
     if model is None: 
         return {
             "font": "Helvetica", "bg_color_hex": "#F0F8FF", 
             "text_color_hex": "#2F4F4F", "title_color_hex": "#FF6347",
-            "border_style": "simples", "border_color_hex": "#4682B4"
+            "border_style": "simples", "border_color_hex": "#4682B4",
+            "icon_name": "estrela"
         }
 
-    # A IA agora pode escolher entre os estilos de borda que sabemos desenhar
+    # REMOVI A OPÇÃO "ondas" DA LISTA DE ESCOLHAS DA IA PARA EVITAR O ERRO
     prompt = f"""
     Aja como um diretor de arte criando um layout para um poema infantil.
     O tema é "{theme}" e o poema é: "{poem_text}".
@@ -25,41 +31,43 @@ def generate_pdf_style(theme, poem_text):
 
     **Chaves obrigatórias no JSON:**
     - "font": Escolha uma entre "Courier", "Helvetica", "Times".
-    - "bg_color_hex": Uma cor de fundo suave em hexadecimal (ex: "#F0F8FF").
-    - "text_color_hex": Uma cor de texto que contraste bem com o fundo, em hexadecimal.
-    - "title_color_hex": Uma cor de destaque para o título, em hexadecimal.
-    - "border_style": Escolha UM dos seguintes estilos de borda, o que mais combinar com o tema: "simples", "dupla", "ondas", "estrelas".
-    - "border_color_hex": Uma cor para a borda, em hexadecimal, que combine com o resto da paleta.
+    - "bg_color_hex": Uma cor de fundo suave em hexadecimal.
+    - "text_color_hex": Uma cor de texto que contraste bem com o fundo.
+    - "title_color_hex": Uma cor de destaque para o título.
+    - "border_style": Escolha UM dos seguintes estilos de borda: "simples", "dupla", "estrelas".
+    - "border_color_hex": Uma cor para a borda, em hexadecimal.
+    - "icon_name": Escolha UM dos seguintes nomes de ícone: {json.dumps(AVAILABLE_ICONS)}.
 
     Retorne APENAS o objeto JSON.
     """
     try:
         response = model.generate_content(prompt)
         json_text = response.text.strip().replace("```json", "").replace("```", "").replace("python", "")
-        return json.loads(json_text)
+        style = json.loads(json_text)
+        if style.get("icon_name") not in AVAILABLE_ICONS:
+            style["icon_name"] = "estrela"
+        return style
     except Exception:
-        # Retorna um estilo padrão em caso de falha
         return {
             "font": "Helvetica", "bg_color_hex": "#F0F8FF", 
             "text_color_hex": "#2F4F4F", "title_color_hex": "#FF6347",
-            "border_style": "simples", "border_color_hex": "#4682B4"
+            "border_style": "simples", "border_color_hex": "#4682B4",
+            "icon_name": "estrela"
         }
 
 class PoemPDF(FPDF):
     def __init__(self, style_guide, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.style = style_guide
-        # Converte cores hex para RGB
         self.bg_r, self.bg_g, self.bg_b = tuple(int(self.style['bg_color_hex'].lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         self.text_r, self.text_g, self.text_b = tuple(int(self.style['text_color_hex'].lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         self.title_r, self.title_g, self.title_b = tuple(int(self.style['title_color_hex'].lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         self.border_r, self.border_g, self.border_b = tuple(int(self.style.get('border_color_hex', '#4682B4').lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
 
     def header(self):
-        # Fundo da página com a cor sugerida pela IA
         self.set_fill_color(self.bg_r, self.bg_g, self.bg_b)
         self.rect(0, 0, self.w, self.h, 'F')
-        # Desenha a borda decorativa
+        self.draw_watermark_icon()
         self.draw_border()
 
     def footer(self):
@@ -67,6 +75,19 @@ class PoemPDF(FPDF):
         self.set_font('Helvetica', 'I', 8)
         self.set_text_color(128)
         self.cell(0, 10, f'Gerado pela Oficina de Rimas - {datetime.now().strftime("%d/%m/%Y")}', 0, 0, 'C')
+        
+    def draw_watermark_icon(self):
+        icon_name = self.style.get('icon_name', 'estrela')
+        svg_text = ICONS.get(icon_name)
+        if not svg_text:
+            return
+        try:
+            x = (self.w - 100) / 2
+            y = (self.h - 100) / 2
+            with self.local_context(alpha=0.1):
+                self.image(io.StringIO(svg_text), x=x, y=y, w=100, h=100)
+        except Exception as e:
+            print(f"Erro ao adicionar ícone da biblioteca interna: {e}")
 
     def draw_border(self):
         """Chama a função de desenho de borda apropriada com base no estilo."""
@@ -78,28 +99,11 @@ class PoemPDF(FPDF):
             self.rect(5, 5, self.w - 10, self.h - 10)
             self.set_line_width(0.5)
             self.rect(7, 7, self.w - 14, self.h - 14)
-        elif style == 'ondas':
-            self.draw_waves()
         elif style == 'estrelas':
             self.draw_stars()
         else: # Padrão 'simples'
             self.set_line_width(1)
             self.rect(5, 5, self.w - 10, self.h - 10)
-
-    def draw_waves(self):
-        """Desenha uma borda de ondas simples."""
-        self.set_line_width(0.5)
-        margin = 10
-        step = 5
-        amplitude = 2
-        # Ondas no topo e na base
-        for x in range(margin, int(self.w - margin), step):
-            self.curve(x, margin, x + step / 2, margin - amplitude, x + step, margin)
-            self.curve(x, self.h - margin, x + step / 2, self.h - margin + amplitude, x + step, self.h - margin)
-        # Ondas nas laterais
-        for y in range(margin, int(self.h - margin), step):
-            self.curve(margin, y, margin - amplitude, y + step/2, margin, y + step)
-            self.curve(self.w - margin, y, self.w - margin + amplitude, y + step/2, self.w - margin, y + step)
 
     def draw_stars(self):
         """Desenha estrelas nos quatro cantos da página."""
@@ -112,13 +116,17 @@ class PoemPDF(FPDF):
 
     def draw_star(self, x, y, size=10):
         """Helper para desenhar uma única estrela."""
-        p = []
-        for i in range(5):
-            angle = i * 2 * 3.14159 / 5 - 3.14159 / 2
-            radius = size if i % 2 == 0 else size / 2.5
-            p.append((x + radius *_cos(angle), y + radius * _sin(angle)))
-        self.polygon(p, 'F')
-
+        outer_radius = size
+        inner_radius = size / 2.5
+        points = []
+        for i in range(10):
+            angle = i * 36 - 90
+            radius = outer_radius if i % 2 == 0 else inner_radius
+            points.append(
+                (x + radius * _cos(angle * 3.14159 / 180), 
+                 y + radius * _sin(angle * 3.14159 / 180))
+            )
+        self.polygon(points, 'F')
 
 def create_poem_pdf(title, author, poem_text, style_guide):
     """Cria e retorna o PDF como bytes para download."""
@@ -139,6 +147,3 @@ def create_poem_pdf(title, author, poem_text, style_guide):
     pdf.multi_cell(0, 10, f'- {author}', align='R')
     
     return bytes(pdf.output())
-
-# Funções matemáticas necessárias para desenhar a estrela
-from math import cos as _cos, sin as _sin

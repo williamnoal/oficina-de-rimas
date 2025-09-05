@@ -1,4 +1,4 @@
-# Arquivo: app.py (VERSÃO FINAL - Layout da Barra Lateral Corrigido)
+# Arquivo: app.py
 
 import streamlit as st
 import re
@@ -130,14 +130,17 @@ elif st.session_state.app_stage == 'writing_poem':
                         st.write(f"Problema: **`{error['original']}`**")
                         cols = st.columns(len(error['suggestions']))
                         for i, suggestion in enumerate(error['suggestions']):
-                            cols[i].button(suggestion, key=f"corr_{verse_num}_{error['original']}_{suggestion}", on_click=apply_correction, args=(error['original'], suggestion))
+                            cols[i].button(
+                                suggestion, 
+                                key=f"corr_{verse_num}_{error['original']}_{suggestion}",
+                                on_click=apply_correction,
+                                args=(error['original'], suggestion)
+                            )
                         st.caption(f"Motivo: {error['reason']}")
                     st.markdown(f"</div>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- BARRA LATERAL (SIDEBAR) COM A ORDEM CORRIGIDA ---
     with col_sidebar:
-        # 1. CAÇA-RIMAS (AGORA NO TOPO)
         with st.container(border=True):
             st.subheader("🔎 Caça-Rimas")
             rhyme_word_input = st.text_input("Digite uma palavra para rimar:", key="rhyme_input")
@@ -160,7 +163,6 @@ elif st.session_state.app_stage == 'writing_poem':
                     rhyme_html += "</div>"
                     st.markdown(rhyme_html, unsafe_allow_html=True)
 
-        # 2. INSPIRAÇÃO CRIATIVA (AGORA NO MEIO)
         with st.container(border=True):
             st.subheader("💡 Inspiração Criativa")
             st.caption("Uma lista de ideias para te ajudar a guiar seu poema.")
@@ -171,7 +173,6 @@ elif st.session_state.app_stage == 'writing_poem':
                     for i, idea in enumerate(st.session_state.theme_suggestions):
                         st.markdown(f"**{i+1}.** {idea}")
         
-        # 3. ESTATÍSTICAS (AGORA NA BASE)
         with st.container(border=True):
             st.subheader("📊 Estatísticas do Poema")
             verses, stanzas = get_poem_stats(st.session_state.poem_text)

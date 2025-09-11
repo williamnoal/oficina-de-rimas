@@ -1,4 +1,4 @@
-# Arquivo: app.py
+# Arquivo: app.py (VERSÃO FINAL - Correção do "Vazamento" de Erros)
 
 import streamlit as st
 import re
@@ -62,6 +62,7 @@ def apply_correction(original, suggestion):
             return suggestion.lower()
     
     st.session_state.poem_text = re.sub(r'\b' + re.escape(original) + r'\b', replace_word, st.session_state.poem_text, count=1, flags=re.IGNORECASE)
+    # Após a correção, re-analisa o texto para remover o erro da lista
     st.session_state.spell_errors = find_errors(st.session_state.poem_text)
 
 # --- ROTEAMENTO DA APLICAÇÃO ---
@@ -92,6 +93,12 @@ elif st.session_state.app_stage == 'choosing_theme':
         for theme in st.session_state.generated_themes:
             if st.button(theme, use_container_width=True):
                 st.session_state.chosen_theme = theme
+                
+                # AQUI ESTÁ A CORREÇÃO: Limpando a lousa para o novo poema
+                st.session_state.poem_text = ""
+                st.session_state.spell_errors = []
+                st.session_state.rhymes = None
+
                 with st.spinner("Preparando sua oficina de escrita..."):
                     st.session_state.theme_suggestions = generate_progression_ideas(theme)
                 st.session_state.app_stage = 'writing_poem'
@@ -118,6 +125,7 @@ elif st.session_state.app_stage == 'writing_poem':
             with st.container(border=True):
                 st.subheader("🕵️‍♀️ Dicas do Assistente Criativo")
                 st.info("Encontrei algumas sugestões para melhorar seu poema!")
+                
                 errors_by_verse = defaultdict(list)
                 for error in st.session_state.spell_errors:
                     errors_by_verse[error['verse_number']].append(error)
@@ -128,6 +136,7 @@ elif st.session_state.app_stage == 'writing_poem':
                     st.markdown(f"**No Verso {verse_num}:**")
                     for error in errors:
                         st.write(f"Problema: **`{error['original']}`**")
+                        
                         cols = st.columns(len(error['suggestions']))
                         for i, suggestion in enumerate(error['suggestions']):
                             cols[i].button(

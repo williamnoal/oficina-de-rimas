@@ -1,4 +1,4 @@
-# Arquivo: theme_generator.py
+# Arquivo: theme_generator.py (VERSÃO FINAL - Correção do Erro de Inspiração)
 
 import re
 import json
@@ -40,18 +40,29 @@ def generate_progression_ideas(theme):
     Aja como um professor de escrita criativa experiente, guiando um aluno de 11 a 13 anos que tem pouco contato com poesia.
     O tema do poema é '{theme}'.
     Sua tarefa é criar uma lista fixa de 10 ideias de como progredir na escrita.
+
     **Diretrizes de Estilo (MUITO IMPORTANTE):**
     1.  **Concretude com Lirismo Básico:** As ideias devem ser fáceis de entender e um pouco mais concretas.
     2.  **Foco nos Sentidos:** Incentive o aluno a pensar em cheiros, sons, cores e sensações relacionadas ao tema.
     3.  **Simplicidade:** Use um vocabulário direto e acessível, mas que desperte a imaginação.
     4.  **Formato de Pergunta ou Comando Criativo:** As ideias devem ser perguntas ou comandos criativos.
     5.  **NÃO ESCREVA VERSOS:** Apenas ideias.
+
     FORMATO DA RESPOSTA: Retorne APENAS uma lista Python com 10 strings.
     """
+    # LÓGICA DE INTERPRETAÇÃO CORRIGIDA E MAIS ROBUSTA
     try:
         response = model.generate_content(prompt)
-        response_text = response.text.strip().replace("```json", "").replace("```", "").replace("python", "")
-        suggestions = json.loads(response_text)
-        return suggestions
-    except Exception:
-        return ["O Assistente está descansando a criatividade. Tente de novo!"]
+        # Procura por qualquer coisa que se pareça com uma lista Python na resposta
+        match = re.search(r'\[.*\]', response.text, re.DOTALL)
+        if match:
+            list_str = match.group(0)
+            # A função eval() é mais flexível que json.loads() para listas no estilo Python
+            suggestions = eval(list_str)
+            if isinstance(suggestions, list) and len(suggestions) > 0:
+                return suggestions
+
+        # Se a extração falhar, retorna um erro claro
+        return ["O Assistente não conseguiu gerar ideias. Tente novamente!"]
+    except Exception as e:
+        return [f"O Assistente teve um problema para gerar ideias. (Erro: {e})"]

@@ -8,8 +8,9 @@ def configure_ai():
     try:
         api_key = st.secrets["GOOGLE_API_KEY"]
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         return model
     except (KeyError, FileNotFoundError):
         st.error("Chave da API do Google AI não encontrada. Verifique o arquivo secrets.toml.")
         return None
+

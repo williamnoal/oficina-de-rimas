@@ -1,4 +1,4 @@
-# Arquivo: app.py (VERSÃO FINAL - Correção do "Vazamento" de Erros)
+# Arquivo: app.py (VERSÃO FINAL - Bug do Corretor Resolvido)
 
 import streamlit as st
 import re
@@ -94,10 +94,12 @@ elif st.session_state.app_stage == 'choosing_theme':
             if st.button(theme, use_container_width=True):
                 st.session_state.chosen_theme = theme
                 
-                # AQUI ESTÁ A CORREÇÃO: Limpando a lousa para o novo poema
+                # Limpa a lousa para o novo poema
                 st.session_state.poem_text = ""
                 st.session_state.spell_errors = []
                 st.session_state.rhymes = None
+                st.session_state.rhyme_word = ""
+                st.session_state.pdf_data = None
 
                 with st.spinner("Preparando sua oficina de escrita..."):
                     st.session_state.theme_suggestions = generate_progression_ideas(theme)
@@ -113,6 +115,10 @@ elif st.session_state.app_stage == 'writing_poem':
     with col_editor:
         with st.container(border=True):
             st.subheader("Escreva seu poema aqui")
+            
+            # --- CÓDIGO CORRIGIDO ---
+            # A caixa de texto agora apenas atualiza o estado,
+            # sem lógicas extras que apagam os erros.
             st.session_state.poem_text = st.text_area("Seu Poema", value=st.session_state.poem_text, height=450, key="poem_editor", label_visibility="collapsed")
         
         if st.button("Revisar Ortografia ✍️", use_container_width=True):

@@ -1,4 +1,4 @@
-# Arquivo: app.py (VERSÃO FINAL - Bug do Corretor Resolvido)
+# Arquivo: app.py (VERSÃO FINAL - Com Tela de Revisão Separada)
 
 import streamlit as st
 import re
@@ -106,7 +106,7 @@ elif st.session_state.app_stage == 'choosing_theme':
                 st.session_state.app_stage = 'writing_poem'
                 st.rerun()
 
-# ETAPA 3: Oficina de Escrita
+# ETAPA 3: Oficina de Escrita (Tela Limpa)
 elif st.session_state.app_stage == 'writing_poem':
     st.title(f"✍️ Oficina de Escrita: {st.session_state.chosen_theme}")
     
@@ -115,46 +115,9 @@ elif st.session_state.app_stage == 'writing_poem':
     with col_editor:
         with st.container(border=True):
             st.subheader("Escreva seu poema aqui")
-            
-            # --- CÓDIGO CORRIGIDO ---
-            # A caixa de texto agora apenas atualiza o estado,
-            # sem lógicas extras que apagam os erros.
             st.session_state.poem_text = st.text_area("Seu Poema", value=st.session_state.poem_text, height=450, key="poem_editor", label_visibility="collapsed")
-        
-        if st.button("Revisar Ortografia ✍️", use_container_width=True):
-            with st.spinner("O Assistente está revisando seu poema..."):
-                st.session_state.spell_errors = find_errors(st.session_state.poem_text)
-                if not st.session_state.spell_errors:
-                    st.toast("Nenhum problema encontrado!", icon="🎉")
-        
-        if st.session_state.spell_errors:
-            with st.container(border=True):
-                st.subheader("🕵️‍♀️ Dicas do Assistente Criativo")
-                st.info("Encontrei algumas sugestões para melhorar seu poema!")
-                
-                errors_by_verse = defaultdict(list)
-                for error in st.session_state.spell_errors:
-                    errors_by_verse[error['verse_number']].append(error)
-
-                st.markdown("<div class='correction-list'>", unsafe_allow_html=True)
-                for verse_num, errors in sorted(errors_by_verse.items()):
-                    st.markdown(f"<div class='correction-verse'>", unsafe_allow_html=True)
-                    st.markdown(f"**No Verso {verse_num}:**")
-                    for error in errors:
-                        st.write(f"Problema: **`{error['original']}`**")
-                        
-                        cols = st.columns(len(error['suggestions']))
-                        for i, suggestion in enumerate(error['suggestions']):
-                            cols[i].button(
-                                suggestion, 
-                                key=f"corr_{verse_num}_{error['original']}_{suggestion}",
-                                on_click=apply_correction,
-                                args=(error['original'], suggestion)
-                            )
-                        st.caption(f"Motivo: {error['reason']}")
-                    st.markdown(f"</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
+    
+    # BARRA LATERAL (Ferramentas de Criação)
     with col_sidebar:
         with st.container(border=True):
             st.subheader("🔎 Caça-Rimas")
@@ -196,15 +159,69 @@ elif st.session_state.app_stage == 'writing_poem':
             c2.metric("Estrofes", stanzas)
 
     st.markdown("---")
-    if st.button("Concluir Poema 🏁", type="primary", use_container_width=True):
+    if st.button("Concluir e Ir para Revisão 🏁", type="primary", use_container_width=True):
         if st.session_state.poem_text.strip():
-            st.session_state.app_stage = 'finalizing_poem'
-            st.session_state.pdf_data = None
+            # Roda a revisão ANTES de mudar de página
+            with st.spinner("O Assistente está revisando seu poema..."):
+                st.session_state.spell_errors = find_errors(st.session_state.poem_text)
+            st.session_state.app_stage = 'spell_check_screen'
             st.rerun()
         else:
-            st.error("Escreva seu poema antes de concluir!")
+            st.error("Escreva seu poema antes de ir para a revisão!")
 
-# ETAPA 4: Finalização e Geração de PDF
+# ETAPA 4: Tela de Revisão (Nova Etapa)
+elif st.session_state.app_stage == 'spell_check_screen':
+    st.title("🕵️‍♀️ Oficina de Revisão")
+    st.info("Aqui estão algumas sugestões do Assistente. Você pode clicar nos botões para corrigir ou editar seu texto manualmente.")
+
+    col_editor, col_corrections = st.columns(2)
+
+    with col_editor:
+        st.subheader("Seu Poema (Editável)")
+        st.session_state.poem_text = st.text_area("Seu Poema", value=st.session_state.poem_text, height=450, key="poem_editor", label_visibility="collapsed")
+
+    with col_corrections:
+        st.subheader("Dicas do Assistente")
+        if not st.session_state.spell_errors:
+            st.success("Nenhum problema encontrado! Seu poema está ótimo. 🎉")
+        else:
+            errors_by_verse = defaultdict(list)
+            for error in st.session_state.spell_errors:
+                errors_by_verse[error['verse_number']].append(error)
+
+            st.markdown("<div class='correction-list'>", unsafe_allow_html=True)
+            for verse_num, errors in sorted(errors_by_verse.items()):
+                st.markdown(f"<div class='correction-verse'>", unsafe_allow_html=True)
+                st.markdown(f"**No Verso {verse_num}:**")
+                for error in errors:
+                    st.write(f"Problema: **`{error['original']}`**")
+                    
+                    cols = st.columns(len(error['suggestions']))
+                    for i, suggestion in enumerate(error['suggestions']):
+                        cols[i].button(
+                            suggestion, 
+                            key=f"corr_{verse_num}_{error['original']}_{suggestion}",
+                            on_click=apply_correction,
+                            args=(error['original'], suggestion)
+                        )
+                    st.caption(f"Motivo: {error['reason']}")
+                st.markdown(f"</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    col_nav1, col_nav2 = st.columns(2)
+    with col_nav1:
+        if st.button("Voltar para Edição ✍️", use_container_width=True):
+            st.session_state.app_stage = 'writing_poem'
+            st.rerun()
+    with col_nav2:
+        if st.button("Finalizar e Gerar PDF 🏁", type="primary", use_container_width=True):
+            st.session_state.app_stage = 'finalizing_poem'
+            st.session_state.pdf_data = None # Limpa PDF antigo
+            st.rerun()
+
+
+# ETAPA 5: Finalização e Geração de PDF
 elif st.session_state.app_stage == 'finalizing_poem':
     st.title("Quase lá! Vamos dar um Título ao seu Poema 🏆")
     
@@ -235,7 +252,7 @@ elif st.session_state.app_stage == 'finalizing_poem':
             mime="application/pdf"
         )
 
-    if st.button("Voltar para a Edição"):
-        st.session_state.app_stage = 'writing_poem'
+    if st.button("Voltar para a Revisão 🕵️‍♀️"):
+        st.session_state.app_stage = 'spell_check_screen'
         st.session_state.pdf_data = None
         st.rerun()
